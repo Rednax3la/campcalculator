@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>St Andrews Camp Cost Calculator</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{
+      font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+      min-height:100vh;padding:20px;
+    }
+    .calculator-container{
+      max-width:900px;margin:0 auto;background:rgba(255,255,255,.97);
+      border-radius:18px;box-shadow:0 20px 40px rgba(0,0,0,.12);overflow:hidden
+    }
+    .header{background:linear-gradient(135deg,#4ECDC4,#44A08D);color:#fff;padding:28px;text-align:center}
+    .header h1{font-size:2.2em;margin-bottom:6px;text-shadow:0 2px 4px rgba(0,0,0,.18)}
+    .header p{font-size:1.05em;opacity:.95}
+    .calculator-body{padding:28px}
+    .input-section{
+      display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+      gap:20px;margin-bottom:22px
+    }
+    .input-group{background:#f8f9fa;padding:18px;border-radius:12px;border-left:6px solid #4ECDC4}
+    .input-group label{display:block;font-weight:700;margin-bottom:8px;color:#333}
+    .input-group input{width:100%;padding:12px;border-radius:8px;border:1px solid #e0e6ed;font-size:1rem}
+    .calculate-btn{
+      width:100%;padding:16px;background:linear-gradient(135deg,#FF6B6B,#FF8E53);
+      color:#fff;border:none;border-radius:12px;font-size:1.05em;font-weight:700;cursor:pointer;margin-bottom:18px
+    }
+    .results-section{
+      background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:20px;border-radius:12px;
+      opacity:0;transform:translateY(12px);transition:all .45s ease
+    }
+    .results-section.show{opacity:1;transform:translateY(0)}
+    .cost-breakdown{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:16px}
+    .cost-item{background:rgba(255,255,255,.08);padding:12px;border-radius:8px;text-align:center;backdrop-filter:blur(3px)}
+    .cost-item h3{font-size:.9em;opacity:.9;margin-bottom:6px;text-transform:uppercase}
+    .cost-item .amount{font-size:1.2em;font-weight:800}
+    .detailed{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .detail-box{flex:1 1 200px;background:rgba(255,255,255,.06);padding:12px;border-radius:8px}
+    .detail-box b{display:block;margin-bottom:6px;font-size:.95rem}
+    .result-summary{text-align:center;padding:16px;margin-top:12px;border-radius:10px;background:rgba(255,255,255,.12)}
+    .surplus{color:#4ECDC4}.deficit{color:#FF6B6B}.balanced{color:#96CEB4}
+    @media(max-width:740px){.calculator-body{padding:18px}.header h1{font-size:1.6em}}
+  </style>
+</head>
+<body>
+  <div class="calculator-container">
+    <div class="header">
+      <h1>🏕️ Camp Cost Calculator</h1>
+      <p>St Andrews Crossroads Camp — November 24–29, 2025 · Malewa Bush Ventures</p>
+    </div>
+
+    <div class="calculator-body">
+      <div class="input-section">
+        <div class="input-group">
+          <label for="students">👥 Number of Students</label>
+          <input type="number" id="students" min="1" max="300" value="30"/>
+        </div>
+        <div class="input-group">
+          <label for="churchContribution">⛪ Church Contribution (KES)</label>
+          <input type="number" id="churchContribution" min="0" value="400000"/>
+        </div>
+        <div class="input-group">
+          <label for="feePerStudent">💰 Fee per Student (KES)</label>
+          <!-- default changed to 17,000 -->
+          <input type="number" id="feePerStudent" min="0" value="17000"/>
+        </div>
+      </div>
+
+      <button class="calculate-btn" onclick="calculate()">🧮 Calculate</button>
+
+      <div id="results" class="results-section" aria-live="polite">
+        <div class="cost-breakdown">
+          <div class="cost-item">
+            <h3>Total Camp Cost</h3>
+            <div class="amount" id="totalCost">KES 0</div>
+          </div>
+          <div class="cost-item">
+            <h3>Church Contribution</h3>
+            <div class="amount" id="churchShown">KES 0</div>
+          </div>
+          <div class="cost-item">
+            <h3>To Be Covered by Fees</h3>
+            <div class="amount" id="toCover">KES 0</div>
+          </div>
+          <div class="cost-item">
+            <h3>Break-even per Student</h3>
+            <div class="amount" id="breakEven">KES 0</div>
+          </div>
+        </div>
+
+        <div class="detailed">
+          <div class="detail-box">
+            <b>Model Components (for transparency)</b>
+            <div id="modelParts"></div>
+          </div>
+        </div>
+
+        <div class="result-summary" id="resultSummary">
+          <h2>Financial Status</h2>
+          <div style="font-size:1.25em;margin:8px 0;">
+            <strong>Balance:</strong> <span id="balanceAmount">KES 0</span>
+          </div>
+          <div id="balanceStatus">—</div>
+          <div id="recommendation" style="margin-top:12px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // --- Calibrated model (matches your 20/25/30 figures exactly) ---
+  // Base church used for calibration:
+  const BASE_CHURCH = 400000;
+
+  // Break-even contribution per student when church = BASE_CHURCH
+  // y_base(n) = 5200 + 321,500/n + 300,000/n^2
+  function baseBreakEvenPerStudent(n){
+    return 5200 + (321500 / n) + (300000 / (n*n));
+  }
+
+  // Total camp cost (expenses) implied by the model (independent of user inputs)
+  // E(n) = n * y_base(n) + BASE_CHURCH
+  function totalCampCost(n){
+    return n * baseBreakEvenPerStudent(n) + BASE_CHURCH;
+  }
+
+  // Break-even for any church contribution:
+  // y(n; church) = (E(n) - church)/n = y_base(n) - (church - BASE_CHURCH)/n
+  function breakEvenPerStudent(n, church){
+    return baseBreakEvenPerStudent(n) - ((church - BASE_CHURCH) / n);
+  }
+
+  function money(x){
+    return 'KES ' + Math.round(x).toLocaleString();
+  }
+
+  function calculate(){
+    const n = parseInt(document.getElementById('students').value, 10) || 0;
+    const church = parseInt(document.getElementById('churchContribution').value, 10) || 0;
+    const fee = parseInt(document.getElementById('feePerStudent').value, 10) || 0;
+
+    if(n <= 0){ alert('Please enter a valid number of students.'); return; }
+
+    const cost = totalCampCost(n);               // total expenses
+    const toCover = cost - church;               // amount to be funded by fees
+    const beFee = breakEvenPerStudent(n, church);// break-even per student
+    const revenue = (n * fee) + church;
+    const balance = revenue - cost;
+
+    // Update UI
+    document.getElementById('totalCost').textContent = money(cost);
+    document.getElementById('churchShown').textContent = money(church);
+    document.getElementById('toCover').textContent = money(toCover);
+    document.getElementById('breakEven').textContent = money(beFee);
+    document.getElementById('balanceAmount').textContent = money(balance);
+
+    const parts = [
+      `Per-student essentials: ${money(5200 * n)}`,
+      `Base overhead: ${money(321500)}`,
+      `Scale & logistics (decreases with more students): ${money(300000 / n)}`
+    ].join('<br/>');
+    document.getElementById('modelParts').innerHTML = parts;
+
+    const statusEl = document.getElementById('balanceStatus');
+    const recEl = document.getElementById('recommendation');
+
+    const targetLow = 15000, targetHigh = 17000;
+    const withinTarget = (fee >= targetLow && fee <= targetHigh);
+
+    if(balance > 0){
+      statusEl.textContent = '✅ SURPLUS (current fee covers all costs)';
+      statusEl.className = 'surplus';
+      recEl.innerHTML = `
+        <div class="surplus">
+          <strong>Recommendation:</strong><br/>
+          You could lower the fee to <strong>${money(beFee)}</strong> per student to break even,
+          or keep ${money(fee)} for contingency and future camps.
+        </div>`;
+    }else if(balance < 0){
+      statusEl.textContent = '⚠️ DEFICIT (current fee is not enough)';
+      statusEl.className = 'deficit';
+      recEl.innerHTML = `
+        <div class="deficit">
+          <strong>Action required:</strong><br/>
+          Increase the fee to at least <strong>${money(beFee)}</strong> per student to cover all costs.
+        </div>`;
+    }else{
+      statusEl.textContent = '⚖️ PERFECTLY BALANCED';
+      statusEl.className = 'balanced';
+      recEl.innerHTML = `
+        <div class="balanced">
+          Current fee exactly covers costs.
+        </div>`;
+    }
+
+    // Show results
+    document.getElementById('results').classList.add('show');
+  }
+
+  // Initial calc + live updates
+  window.addEventListener('load', calculate);
+  document.getElementById('students').addEventListener('input', calculate);
+  document.getElementById('churchContribution').addEventListener('input', calculate);
+  document.getElementById('feePerStudent').addEventListener('input', calculate);
+</script>
+</body>
+</html>
+
