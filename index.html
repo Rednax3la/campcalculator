@@ -113,17 +113,25 @@
   </div>
 
 <script>
-  // --- Calibrated model (matches your 20/25/30 figures exactly) ---
-  // Base church used for calibration:
+  // --- Exponential model fitted to the executive-summary (exact fit to scenario points)
+  // Model form (per-student base break-even when church = BASE_CHURCH):
+  //   y_base(n) = L - A * exp(-k * n)
+  // Constants (fitted to the ipynb executive-summary scenarios)
+  const L = 18999.016949152545;
+  const A = 10752.879316821567;
+  const k = 0.08137650855782745;
+
+  // Base church used in executive summary
   const BASE_CHURCH = 400000;
 
-  // Break-even contribution per student when church = BASE_CHURCH
-  // y_base(n) = 5200 + 321,500/n + 300,000/n^2
+  // baseBreakEvenPerStudent now uses the exponential fit
   function baseBreakEvenPerStudent(n){
-    return 5200 + (321500 / n) + (300000 / (n*n));
+    // ensure numeric n
+    n = Number(n);
+    return L - A * Math.exp(-k * n);
   }
 
-  // Total camp cost (expenses) implied by the model (independent of user inputs)
+  // Total camp cost (expenses) implied by the model (consistent with the ipynb)
   // E(n) = n * y_base(n) + BASE_CHURCH
   function totalCampCost(n){
     return n * baseBreakEvenPerStudent(n) + BASE_CHURCH;
@@ -146,9 +154,9 @@
 
     if(n <= 0){ alert('Please enter a valid number of students.'); return; }
 
-    const cost = totalCampCost(n);               // total expenses
+    const cost = totalCampCost(n);               // total expenses (model-implied)
     const toCover = cost - church;               // amount to be funded by fees
-    const beFee = breakEvenPerStudent(n, church);// break-even per student
+    const beFee = breakEvenPerStudent(n, church);// break-even per student using fitted model
     const revenue = (n * fee) + church;
     const balance = revenue - cost;
 
@@ -160,9 +168,10 @@
     document.getElementById('balanceAmount').textContent = money(balance);
 
     const parts = [
-      `Per-student essentials: ${money(5200 * n)}`,
-      `Base overhead: ${money(321500)}`,
-      `Scale & logistics (decreases with more students): ${money(300000 / n)}`
+      `Per-student essentials (fitted model): ${money(baseBreakEvenPerStudent(n))}`,
+      `Model asymptote (L): ${money(L)}`,
+      `Scale factor A: ${money(A)}`,
+      `Decay k: ${k.toFixed(6)}`
     ].join('<br/>');
     document.getElementById('modelParts').innerHTML = parts;
 
@@ -210,4 +219,3 @@
 </script>
 </body>
 </html>
-
