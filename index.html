@@ -9,7 +9,7 @@
     body{
       font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
-      min-height:100vh;padding:20px;
+      min-height:100vh;padding:20px;color:#222;
     }
     .calculator-container{
       max-width:900px;margin:0 auto;background:rgba(255,255,255,.97);
@@ -42,8 +42,56 @@
     .detailed{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
     .detail-box{flex:1 1 200px;background:rgba(255,255,255,.06);padding:12px;border-radius:8px}
     .detail-box b{display:block;margin-bottom:6px;font-size:.95rem}
-    .result-summary{text-align:center;padding:16px;margin-top:12px;border-radius:10px;background:rgba(255,255,255,.12)}
+
+    /* NEW Financial Status styling */
+    .financial {
+      display:grid;
+      grid-template-columns: 1fr 320px;
+      gap:18px;
+      align-items:start;
+    }
+    .financial-left {
+      background: rgba(255,255,255,0.06);
+      padding: 16px;
+      border-radius: 10px;
+    }
+    .status-big {
+      display:flex;
+      align-items:center;
+      gap:14px;
+      padding: 12px;
+      border-radius: 10px;
+      margin-bottom: 14px;
+    }
+    .status-amount { font-size: 1.6rem; font-weight: 900; }
+    .status-label { font-weight:700; opacity:0.95; }
+
+    .surplus-box { background: rgba(78,205,196,0.12); color:#0b6b56; border-left:6px solid #4ECDC4; }
+    .deficit-box { background: rgba(255,107,107,0.12); color:#7b1e1e; border-left:6px solid #FF6B6B; }
+    .balanced-box { background: rgba(150,206,180,0.12); color:#23533a; border-left:6px solid #96CEB4; }
+
+    .breakdown-list { list-style:none; margin-top:6px; }
+    .breakdown-list li { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed rgba(255,255,255,0.05); font-weight:600; }
+    .breakdown-list li small { display:block; font-weight:400; opacity:0.9; font-size:0.9rem; }
+
+    .financial-right {
+      padding:14px;
+      border-radius:10px;
+      text-align:center;
+      background: rgba(255,255,255,0.06);
+    }
+    .net-student { font-size:2rem; font-weight:900; margin-bottom:6px; }
+    .net-label { font-weight:700; opacity:0.95; margin-bottom:10px; display:block; }
+
+    .recommendation { margin-top:12px; padding:12px; border-radius:8px; background:rgba(255,255,255,0.12); font-weight:700; }
+
+    @media(max-width:860px){
+      .financial { grid-template-columns: 1fr; }
+    }
+
+    .amount-highlight{font-size:2em;font-weight:800;margin:10px 0}
     .surplus{color:#4ECDC4}.deficit{color:#FF6B6B}.balanced{color:#96CEB4}
+
     @media(max-width:740px){.calculator-body{padding:18px}.header h1{font-size:1.6em}}
   </style>
 </head>
@@ -62,160 +110,167 @@
         </div>
         <div class="input-group">
           <label for="churchContribution">⛪ Church Contribution (KES)</label>
-          <input type="number" id="churchContribution" min="0" value="400000"/>
+          <input type="number" id="churchContribution" min="0" value="300000"/>
         </div>
         <div class="input-group">
           <label for="feePerStudent">💰 Fee per Student (KES)</label>
-          <!-- default changed to 17,000 -->
           <input type="number" id="feePerStudent" min="0" value="17000"/>
         </div>
       </div>
 
-      <button class="calculate-btn" onclick="calculate()">🧮 Calculate</button>
+      <button class="calculate-btn" onclick="calculateCampCost()">🧮 Calculate Camp Finances</button>
 
       <div id="results" class="results-section" aria-live="polite">
-        <div class="cost-breakdown">
+        <div class="cost-breakdown" aria-hidden="true">
           <div class="cost-item">
-            <h3>Total Camp Cost</h3>
-            <div class="amount" id="totalCost">KES 0</div>
+            <h3>Fixed Costs</h3>
+            <div class="amount" id="fixedCosts">KES 0</div>
           </div>
           <div class="cost-item">
-            <h3>Church Contribution</h3>
-            <div class="amount" id="churchShown">KES 0</div>
+            <h3>Variable Costs</h3>
+            <div class="amount" id="variableCosts">KES 0</div>
           </div>
           <div class="cost-item">
-            <h3>To Be Covered by Fees</h3>
-            <div class="amount" id="toCover">KES 0</div>
+            <h3>Additional Expenses</h3>
+            <div class="amount" id="additionalCosts">KES 111,000</div>
           </div>
-          <div class="cost-item">
-            <h3>Break-even per Student</h3>
-            <div class="amount" id="breakEven">KES 0</div>
+          <div class="cost-item" style="display:none;">
+            <h3>Total Camp Cost (hidden duplicate)</h3>
+            <div class="amount" id="totalCostHidden">KES 0</div>
           </div>
         </div>
 
-        <div class="detailed">
-          <div class="detail-box">
-            <b>Model Components (for transparency)</b>
-            <div id="modelParts"></div>
-          </div>
-        </div>
+        <!-- NEW Financial Status area -->
+        <div class="financial" role="region" aria-label="Financial status">
+          <div class="financial-left" id="financialLeft">
+            <!-- status box (surplus/deficit) injected here -->
+            <div id="statusBox" class="status-big balanced-box">
+              <div>
+                <div class="status-label">Status</div>
+                <div id="statusText">—</div>
+              </div>
+              <div style="margin-left:auto; text-align:right;">
+                <div style="font-size:0.9rem; opacity:0.9">Balance</div>
+                <div class="status-amount" id="statusAmount">KES 0</div>
+              </div>
+            </div>
 
-        <div class="result-summary" id="resultSummary">
-          <h2>Financial Status</h2>
-          <div style="font-size:1.25em;margin:8px 0;">
-            <strong>Balance:</strong> <span id="balanceAmount">KES 0</span>
+            <ul class="breakdown-list" aria-live="polite">
+              <li><span>Total Revenue</span><span id="revAmount">KES 0</span></li>
+              <li><span>Total Camp Cost</span><span id="costAmount">KES 0</span></li>
+              <li><span>Net to be covered by fees</span><span id="netToCover">KES 0</span></li>
+              <li><span>Computed balance</span><span id="computedBalance">KES 0</span></li>
+            </ul>
+
+            <div id="recommendationBox" class="recommendation" aria-live="polite">
+              <!-- recommendation text injected here -->
+            </div>
           </div>
-          <div id="balanceStatus">—</div>
-          <div id="recommendation" style="margin-top:12px;"></div>
+
+          <div class="financial-right" id="financialRight">
+            <div class="net-label">Net per Student (what parents pay)</div>
+            <div class="net-student" id="netPerStudent">KES 0</div>
+            <div style="font-size:0.95rem;opacity:0.95;margin-top:6px;" id="withinTargetText">—</div>
+          </div>
         </div>
       </div>
+
     </div>
   </div>
 
 <script>
-  // --- Exponential model fitted to the executive-summary (exact fit to scenario points)
-  // Model form (per-student base break-even when church = BASE_CHURCH):
-  //   y_base(n) = L - A * exp(-k * n)
-  // Constants (fitted to the ipynb executive-summary scenarios)
-  const L = 18999.016949152545;
-  const A = 10752.879316821567;
-  const k = 0.08137650855782745;
-
-  // Base church used in executive summary
-  const BASE_CHURCH = 400000;
-
-  // baseBreakEvenPerStudent now uses the exponential fit
-  function baseBreakEvenPerStudent(n){
-    // ensure numeric n
-    n = Number(n);
-    return L - A * Math.exp(-k * n);
-  }
-
-  // Total camp cost (expenses) implied by the model (consistent with the ipynb)
-  // E(n) = n * y_base(n) + BASE_CHURCH
-  function totalCampCost(n){
-    return n * baseBreakEvenPerStudent(n) + BASE_CHURCH;
-  }
-
-  // Break-even for any church contribution:
-  // y(n; church) = (E(n) - church)/n = y_base(n) - (church - BASE_CHURCH)/n
-  function breakEvenPerStudent(n, church){
-    return baseBreakEvenPerStudent(n) - ((church - BASE_CHURCH) / n);
-  }
+  // Values synced to the PDF / executive summary
+  const TOTAL_FIXED = 173400;      // KES
+  const VARIABLE_PER_STUDENT = 17600; // KES
+  const ADDITIONAL_EXPENSES = 111000; // KES
+  const TARGET_LOW = 15000;
+  const TARGET_HIGH = 17000;
 
   function money(x){
-    return 'KES ' + Math.round(x).toLocaleString();
+    return 'KES ' + Number(Math.round(x)).toLocaleString();
   }
 
-  function calculate(){
-    const n = parseInt(document.getElementById('students').value, 10) || 0;
-    const church = parseInt(document.getElementById('churchContribution').value, 10) || 0;
-    const fee = parseInt(document.getElementById('feePerStudent').value, 10) || 0;
+  function calculateCampCost(){
+    const students = Math.max(1, parseInt(document.getElementById('students').value, 10) || 0);
+    const churchContribution = Math.max(0, parseInt(document.getElementById('churchContribution').value, 10) || 0);
+    const feePerStudent = Math.max(0, parseInt(document.getElementById('feePerStudent').value, 10) || 0);
 
-    if(n <= 0){ alert('Please enter a valid number of students.'); return; }
+    // Core cost math (no VAT)
+    const totalFixedCosts = TOTAL_FIXED;
+    const totalVariableCosts = students * VARIABLE_PER_STUDENT;
+    const quoteSubtotal = totalFixedCosts + totalVariableCosts;
+    const totalCampCost = quoteSubtotal + ADDITIONAL_EXPENSES;
 
-    const cost = totalCampCost(n);               // total expenses (model-implied)
-    const toCover = cost - church;               // amount to be funded by fees
-    const beFee = breakEvenPerStudent(n, church);// break-even per student using fitted model
-    const revenue = (n * fee) + church;
-    const balance = revenue - cost;
+    // Net that fees must cover after church contribution
+    const netToBeCovered = totalCampCost - churchContribution;
+    const netPerStudent = netToBeCovered > 0 ? Math.ceil(netToBeCovered / students) : 0;
 
-    // Update UI
-    document.getElementById('totalCost').textContent = money(cost);
-    document.getElementById('churchShown').textContent = money(church);
-    document.getElementById('toCover').textContent = money(toCover);
-    document.getElementById('breakEven').textContent = money(beFee);
-    document.getElementById('balanceAmount').textContent = money(balance);
+    // Revenue & balance
+    const totalRevenue = (students * feePerStudent) + churchContribution;
+    const balance = totalRevenue - totalCampCost;
+    const absBalance = Math.abs(balance);
 
-    const parts = [
-      `Per-student essentials (fitted model): ${money(baseBreakEvenPerStudent(n))}`,
-      `Model asymptote (L): ${money(L)}`,
-      `Scale factor A: ${money(A)}`,
-      `Decay k: ${k.toFixed(6)}`
-    ].join('<br/>');
-    document.getElementById('modelParts').innerHTML = parts;
+    // Update small cost tiles (kept for transparency)
+    document.getElementById('fixedCosts').textContent = money(totalFixedCosts);
+    document.getElementById('variableCosts').textContent = money(totalVariableCosts);
+    document.getElementById('additionalCosts').textContent = money(ADDITIONAL_EXPENSES);
+    document.getElementById('totalCostHidden').textContent = money(totalCampCost);
 
-    const statusEl = document.getElementById('balanceStatus');
-    const recEl = document.getElementById('recommendation');
+    // Update financial breakdown
+    document.getElementById('revAmount').textContent = money(totalRevenue);
+    document.getElementById('costAmount').textContent = money(totalCampCost);
+    document.getElementById('netToCover').textContent = money(Math.max(0, netToBeCovered));
+    document.getElementById('computedBalance').textContent = money(balance);
 
-    const targetLow = 15000, targetHigh = 17000;
-    const withinTarget = (fee >= targetLow && fee <= targetHigh);
+    // Net per-student prominent display
+    document.getElementById('netPerStudent').textContent = money(netPerStudent);
 
-    if(balance > 0){
-      statusEl.textContent = '✅ SURPLUS (current fee covers all costs)';
-      statusEl.className = 'surplus';
-      recEl.innerHTML = `
-        <div class="surplus">
-          <strong>Recommendation:</strong><br/>
-          You could lower the fee to <strong>${money(beFee)}</strong> per student to break even,
-          or keep ${money(fee)} for contingency and future camps.
-        </div>`;
-    }else if(balance < 0){
-      statusEl.textContent = '⚠️ DEFICIT (current fee is not enough)';
-      statusEl.className = 'deficit';
-      recEl.innerHTML = `
-        <div class="deficit">
-          <strong>Action required:</strong><br/>
-          Increase the fee to at least <strong>${money(beFee)}</strong> per student to cover all costs.
-        </div>`;
-    }else{
-      statusEl.textContent = '⚖️ PERFECTLY BALANCED';
-      statusEl.className = 'balanced';
-      recEl.innerHTML = `
-        <div class="balanced">
-          Current fee exactly covers costs.
-        </div>`;
+    // Within target text
+    const within = netPerStudent === 0 ? 'Fully covered by church contribution' :
+                   (netPerStudent >= TARGET_LOW && netPerStudent <= TARGET_HIGH) ? 'Within target range' :
+                   netPerStudent > TARGET_HIGH ? 'Above target range' :
+                   'Below target range';
+    const withinEl = document.getElementById('withinTargetText');
+    withinEl.textContent = within;
+
+    // Status box (big)
+    const statusBox = document.getElementById('statusBox');
+    const statusText = document.getElementById('statusText');
+    const statusAmount = document.getElementById('statusAmount');
+    const recommendationBox = document.getElementById('recommendationBox');
+
+    // reset classes
+    statusBox.className = 'status-big';
+
+    if (balance > 0) {
+      // Surplus
+      statusBox.classList.add('surplus-box');
+      statusText.textContent = 'SURPLUS';
+      statusAmount.textContent = money(absBalance);
+      recommendationBox.innerHTML = `<div style="color:#064e40">💡 You have a surplus. Consider reducing the student fee to <strong>${money(Math.ceil(netToBeCovered / students))}</strong> to break even, or keep current fee for contingency.</div>`;
+    } else if (balance < 0) {
+      // Deficit
+      statusBox.classList.add('deficit-box');
+      statusText.textContent = 'DEFICIT';
+      statusAmount.textContent = money(absBalance);
+      recommendationBox.innerHTML = `<div style="color:#5a1717">🚨 There's a deficit. Increase the student fee to at least <strong>${money(Math.ceil(netToBeCovered / students))}</strong> per student to cover costs, or seek additional support.</div>`;
+    } else {
+      // Balanced
+      statusBox.classList.add('balanced-box');
+      statusText.textContent = 'BALANCED';
+      statusAmount.textContent = money(0);
+      recommendationBox.innerHTML = `<div style="color:#113e2f">⚖️ Perfectly balanced. Current fee covers all costs after the church contribution.</div>`;
     }
 
-    // Show results
+    // Reveal results
     document.getElementById('results').classList.add('show');
   }
 
-  // Initial calc + live updates
-  window.addEventListener('load', calculate);
-  document.getElementById('students').addEventListener('input', calculate);
-  document.getElementById('churchContribution').addEventListener('input', calculate);
-  document.getElementById('feePerStudent').addEventListener('input', calculate);
+  // Events & initial render
+  window.addEventListener('load', calculateCampCost);
+  document.getElementById('students').addEventListener('input', calculateCampCost);
+  document.getElementById('churchContribution').addEventListener('input', calculateCampCost);
+  document.getElementById('feePerStudent').addEventListener('input', calculateCampCost);
 </script>
 </body>
 </html>
